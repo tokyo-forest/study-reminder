@@ -1,0 +1,49 @@
+@startuml
+participant LINEユーザー as user
+participant LINEボットサーバー as lineBot
+participant Webサーバー as webServer
+participant DB as db
+participant GitHub as github
+participant LINEプラットフォーム as linePlat
+
+user -> linePlat: study-reminder友達登録(userId)※友達登録したら勝手に通信が飛ぶ
+linePlat -> lineBot: webhookでイベント通知(userId)
+activate lineBot
+lineBot -> linePlat: 連携トークン発行API呼び出し
+linePlat -> lineBot: 連携トークン返却
+lineBot -> linePlat: 連携URLをユーザーに通知するようMessagingAPI呼び出し
+deactivate lineBot
+linePlat -> user: 連携URLをメッセージ送信
+user -> webServer: 連携URLにアクセス(linkToken)
+activate webServer
+webServer -> webServer: state作成
+webServer -> db: stateとlinkToken紐付け
+webServer -> user: GitHubのログインページにリダイレクト命令(state)
+deactivate webServer
+user -> github: GitHubログインページアクセス
+github -> user: ログインフォーム画面
+user -> github: credential入力
+github -> user: リダイレクトURL返却(code,state)
+user -> webServer: リダイレクト先アクセス(code,state)
+activate webServer
+webServer -> db: state検証
+webServer -> github: access_token取得(code)
+github -> webServer: access_token
+webServer -> github: user情報取得
+github -> webServer: gitHubUserId
+webServer -> db: stateとgitHubUserId紐付ける
+webServer -> db: linkToken取得(state)
+db -> webServer: linkToken
+webServer -> user: リダイレクトURL返却(state,lineToken)
+deactivate webServer
+user -> linePlat: アクセス(state,lineToken)
+linePlat -> lineBot: webhookでイベント通知(state,userId)
+activate lineBot
+lineBot -> db: gitHubUserId取得(state)
+db -> lineBot: gitHubUserId
+lineBot -> db: アカウント紐付け(userId,gitHubUserId)
+
+@enduml
+
+
+
